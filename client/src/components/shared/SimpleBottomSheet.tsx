@@ -6,6 +6,7 @@ import {
   PanResponder,
   Animated,
   Dimensions,
+  Keyboard,
 } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -19,6 +20,8 @@ interface SimpleBottomSheetProps {
   onChange?: (index: number) => void;
   enableOverDrag?: boolean;
   enableDynamicSizing?: boolean;
+  keyboardBehavior?: 'interactive' | 'fillParent' | 'extend';
+  keyboardBlurBehavior?: 'none' | 'restore';
 }
 
 export const SimpleBottomSheet = React.forwardRef<any, SimpleBottomSheetProps>(
@@ -30,12 +33,17 @@ export const SimpleBottomSheet = React.forwardRef<any, SimpleBottomSheetProps>(
       handleIndicatorStyle,
       style,
       onChange,
+      keyboardBehavior = 'interactive',
+      keyboardBlurBehavior = 'restore',
     },
     ref
   ) => {
     const animatedValue = useRef(new Animated.Value(snapPoints[initialIndex])).current;
     const currentSnapIndex = useRef(initialIndex);
     const lastGesture = useRef(0);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const scrollOffset = useRef(0);
+    const isScrollEnabled = useRef(true);
 
     const snapTo = useCallback(
       (index: number) => {
@@ -44,34 +52,53 @@ export const SimpleBottomSheet = React.forwardRef<any, SimpleBottomSheetProps>(
         currentSnapIndex.current = index;
         const snapPoint = snapPoints[index];
         
+        if (keyboardBlurBehavior === 'restore') {
+          Keyboard.dismiss();
+        }
+        
         Animated.spring(animatedValue, {
           toValue: snapPoint,
-          damping: 20,
-          stiffness: 150,
-          mass: 0.5,
+          damping: 25,
+          stiffness: 200,
+          mass: 0.8,
           useNativeDriver: false,
         }).start(() => {
           onChange?.(index);
         });
       },
-      [animatedValue, snapPoints, onChange]
+      [animatedValue, snapPoints, onChange, keyboardBlurBehavior]
     );
 
     const panResponder = useRef(
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
         onMoveShouldSetPanResponder: (_, gestureState) => {
-          // Only capture if vertical movement is significant
-          return Math.abs(gestureState.dy) > 5;
+          const isScrolledToTop = scrollOffset.current <= 0;
+          const isDraggingDown = gestureState.dy > 0;
+          const isDraggingUp = gestureState.dy < 0;
+          const hasSignificantMovement = Math.abs(gestureState.dy) > 8;
+          
+          if (!hasSignificantMovement) return false;
+          
+          if (isDraggingDown && isScrolledToTop) {
+            return true;
+          }
+          
+          if (isDraggingUp && currentSnapIndex.current < snapPoints.length - 1) {
+            return true;
+          }
+          
+          return false;
         },
+        onMoveShouldSetPanResponderCapture: () => false,
         onPanResponderGrant: () => {
           lastGesture.current = animatedValue._value;
+          isScrollEnabled.current = false;
         },
         onPanResponderMove: (_, gestureState) => {
-          // Calculate new height based on gesture
           const newHeight = lastGesture.current - gestureState.dy;
           
-          // Clamp between min and max snap points
           const minHeight = Math.min(...snapPoints);
           const maxHeight = Math.max(...snapPoints);
           const clampedHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
@@ -79,23 +106,20 @@ export const SimpleBottomSheet = React.forwardRef<any, SimpleBottomSheetProps>(
           animatedValue.setValue(clampedHeight);
         },
         onPanResponderRelease: (_, gestureState) => {
-          const currentHeight = animatedValue._value;
-          const velocity = -gestureState.vy; // Negative because dy is inverted
+          isScrollEnabled.current = true;
           
-          // Find closest snap point based on current position and velocity
+          const currentHeight = animatedValue._value;
+          const velocity = -gestureState.vy;
+          
           let targetIndex = currentSnapIndex.current;
           
-          // If velocity is significant, snap in that direction
-          if (Math.abs(velocity) > 0.5) {
+          if (Math.abs(velocity) > 0.8) {
             if (velocity > 0 && currentSnapIndex.current < snapPoints.length - 1) {
-              // Swiping up
               targetIndex = currentSnapIndex.current + 1;
             } else if (velocity < 0 && currentSnapIndex.current > 0) {
-              // Swiping down
               targetIndex = currentSnapIndex.current - 1;
             }
           } else {
-            // Find nearest snap point
             let minDistance = Infinity;
             snapPoints.forEach((point, index) => {
               const distance = Math.abs(point - currentHeight);
@@ -107,6 +131,10 @@ export const SimpleBottomSheet = React.forwardRef<any, SimpleBottomSheetProps>(
           }
           
           snapTo(targetIndex);
+        },
+        onPanResponderTerminate: () => {
+          isScrollEnabled.current = true;
+          snapTo(currentSnapIndex.current);
         },
       })
     ).current;
@@ -142,11 +170,16 @@ export const SimpleBottomSheet = React.forwardRef<any, SimpleBottomSheetProps>(
           <View style={[styles.handle, handleIndicatorStyle]} />
         </View>
         <ScrollView
+          ref={scrollViewRef}
           style={styles.content}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          scrollEnabled={true}
-          bounces={false}
+          scrollEnabled={isScrollEnabled.current}
+          bounces={true}
+          scrollEventThrottle={16}
+          onScroll={(event) => {
+            scrollOffset.current = event.nativeEvent.contentOffset.y;
+          }}
         >
           {children}
         </ScrollView>

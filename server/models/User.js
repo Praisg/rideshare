@@ -5,6 +5,9 @@ const { Schema } = mongoose;
 
 const userSchema = new Schema(
   {
+    name: {
+      type: String,
+    },
     role: {
       type: String,
       enum: ["customer", "rider"],
@@ -92,6 +95,33 @@ const userSchema = new Schema(
         type: Number,
         default: 0,
       },
+    },
+    vehicle: {
+      type: {
+        type: String,
+        enum: ["bike", "auto", "cabEconomy", "cabPremium"],
+      },
+      make: {
+        type: String,
+      },
+      model: {
+        type: String,
+      },
+      year: {
+        type: Number,
+      },
+      color: {
+        type: String,
+      },
+      licensePlate: {
+        type: String,
+      },
+      photo: {
+        type: String,
+      },
+    },
+    profilePhoto: {
+      type: String,
     },
   },
   {

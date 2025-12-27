@@ -1,7 +1,7 @@
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import React, { FC, memo, useEffect, useRef, useState } from "react";
 import MapView, { Marker, Polyline } from "react-native-maps";
-import { customMapStyle, indiaIntialRegion } from "@/utils/CustomMap";
+import { customMapStyle, defaultInitialRegion } from "@/utils/CustomMap";
 import MapViewDirections from "react-native-maps-directions";
 import { Colors } from "@/utils/Constants";
 import { getPoints } from "@/utils/mapUtils";
@@ -67,7 +67,7 @@ const LiveTrackingMap: FC<{
         longitudeDelta: 0.05,
       };
     }
-    return indiaIntialRegion;
+    return defaultInitialRegion;
   };
 
   useEffect(() => {

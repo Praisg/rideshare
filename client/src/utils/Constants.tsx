@@ -17,6 +17,7 @@ export enum Colors {
     tertiary = '#00695C',
     secondary_light='#F0FDF4',
     iosColor='#10B981',
+    border = '#D1D5DB',
     
     glass_bg = 'rgba(255, 255, 255, 0.25)',
     glass_border = 'rgba(255, 255, 255, 0.4)',

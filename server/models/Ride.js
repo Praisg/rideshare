@@ -74,6 +74,29 @@ const rideSchema = new Schema(
       type: String,
       default: null,
     },
+    acceptedAt: {
+      type: Date,
+    },
+    arrivedAt: {
+      type: Date,
+    },
+    completedAt: {
+      type: Date,
+    },
+    rating: {
+      riderRating: {
+        type: Number,
+        min: 1,
+        max: 5,
+      },
+      customerRating: {
+        type: Number,
+        min: 1,
+        max: 5,
+      },
+      riderFeedback: String,
+      customerFeedback: String,
+    },
   },
   {
     timestamps: true,

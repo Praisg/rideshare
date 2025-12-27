@@ -20,7 +20,7 @@ import LocationItem from "./LocationItem";
 import * as Location from "expo-location";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { RFValue } from "react-native-responsive-fontsize";
-import { customMapStyle, indiaIntialRegion } from "@/utils/CustomMap";
+import { customMapStyle, defaultInitialRegion } from "@/utils/CustomMap";
 import { mapStyles } from "@/styles/mapStyles";
 
 interface MapPickerModalProps {
@@ -49,6 +49,7 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
   const [region, setRegion] = useState<Region | null>(null);
   const [locations, setLocations] = useState([]);
   const textInputRef = useRef<TextInput>(null);
+  const [initialRegion, setInitialRegion] = useState<Region>(defaultInitialRegion);
 
   const fetchLocation = async (query: string) => {
     if (query?.length > 4) {
@@ -58,6 +59,32 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
       setLocations([]);
     }
   };
+
+  useEffect(() => {
+    (async () => {
+      if (visible && !selectedLocation?.latitude && !location?.latitude) {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          try {
+            const userLocation = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            const { latitude, longitude } = userLocation.coords;
+            const newRegion = {
+              latitude,
+              longitude,
+              latitudeDelta: 0.5,
+              longitudeDelta: 0.5,
+            };
+            setInitialRegion(newRegion);
+            setRegion(newRegion);
+          } catch (error) {
+            console.error("Error getting current location:", error);
+          }
+        }
+      }
+    })();
+  }, [visible]);
 
   useEffect(() => {
     if (selectedLocation?.latitude) {
@@ -195,18 +222,14 @@ const MapPickerModal: FC<MapPickerModalProps> = ({
                 pitchEnabled={false}
                 onRegionChangeComplete={handleRegionChangeComplete}
                 style={{ flex: 1 }}
-                initialRegion={{
-                  latitude:
-                    region?.latitude ??
-                    location?.latitude ??
-                    indiaIntialRegion?.latitude,
-                  longitude:
-                    region?.longitude ??
-                    location?.longitude ??
-                    indiaIntialRegion?.latitude,
-                  latitudeDelta: 0.5,
-                  longitudeDelta: 0.5,
-                }}
+                initialRegion={
+                  region ?? {
+                    latitude: location?.latitude ?? initialRegion.latitude,
+                    longitude: location?.longitude ?? initialRegion.longitude,
+                    latitudeDelta: 0.5,
+                    longitudeDelta: 0.5,
+                  }
+                }
                 provider="google"
                 showsMyLocationButton={false}
                 showsCompass={false}

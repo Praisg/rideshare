@@ -4,7 +4,7 @@ import { useIsFocused } from "@react-navigation/native";
 import MapView, { Marker, Region } from "react-native-maps";
 import { useUserStore } from "@/store/userStore";
 import { useWS } from "@/service/WSProvider";
-import { customMapStyle, indiaIntialRegion } from "@/utils/CustomMap";
+import { customMapStyle, defaultInitialRegion } from "@/utils/CustomMap";
 import { reverseGeocode } from "@/utils/mapUtils";
 import haversine from "haversine-distance";
 import { mapStyles } from "@/styles/mapStyles";
@@ -15,6 +15,7 @@ import * as Location from "expo-location";
 const DraggableMap: FC<{ height: number }> = ({ height }) => {
   const isFocused = useIsFocused();
   const [markers, setMarkers] = useState<any>([]);
+  const [currentRegion, setCurrentRegion] = useState(defaultInitialRegion);
   const mapRef = useRef<MapView>(null);
   const { setLocation, location, outOfRange, setOutOfRange } = useUserStore();
   const { emit, on, off } = useWS();
@@ -26,18 +27,22 @@ const DraggableMap: FC<{ height: number }> = ({ height }) => {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === "granted") {
           try {
-            const location = await Location.getCurrentPositionAsync({});
-            const { latitude, longitude } = location.coords;
-            mapRef.current?.fitToCoordinates([{ latitude, longitude }], {
-              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-              animated: true,
+            const location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
             });
+            const { latitude, longitude } = location.coords;
+            
             const newRegion = {
               latitude,
               longitude,
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             };
+            
+            setCurrentRegion(newRegion);
+            
+            mapRef.current?.animateToRegion(newRegion, 1000);
+            
             handleRegionChangeComplete(newRegion);
           } catch (error) {
             console.error("Error getting current location:", error);
@@ -126,7 +131,7 @@ const DraggableMap: FC<{ height: number }> = ({ height }) => {
         pitchEnabled={false}
         onRegionChangeComplete={handleRegionChangeComplete}
         style={{ flex: 1 }}
-        initialRegion={indiaIntialRegion}
+        initialRegion={currentRegion}
         provider="google"
         showsMyLocationButton={false}
         showsCompass={false}

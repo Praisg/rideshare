@@ -149,6 +149,11 @@ export const getSuggestedPriceRange = (distance, vehicleType, surgeMultiplier = 
 
 export const reverseGeocode = async (latitude, longitude) => {
   try {
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      console.error('Reverse geocoding error: Invalid coordinates', { latitude, longitude });
+      return null;
+    }
+
     const response = await axios.get(
       `https://maps.googleapis.com/maps/api/geocode/json`,
       {
@@ -158,12 +163,33 @@ export const reverseGeocode = async (latitude, longitude) => {
         },
       }
     );
+
     if (response.data.status === 'OK' && response.data.results[0]) {
       return response.data.results[0].formatted_address;
     }
+
+    if (response.data.status === 'REQUEST_DENIED') {
+      console.error('Reverse geocoding error: API key denied', response.data.error_message || '');
+    } else if (response.data.status === 'INVALID_REQUEST') {
+      console.error('Reverse geocoding error: Invalid request', { latitude, longitude, status: response.data.status });
+    } else if (response.data.status === 'ZERO_RESULTS') {
+      console.warn('Reverse geocoding: No results found', { latitude, longitude });
+    } else {
+      console.error('Reverse geocoding error: Unexpected status', { status: response.data.status, error_message: response.data.error_message });
+    }
+    
     return null;
   } catch (error) {
-    console.error('Reverse geocoding error:', error.message);
+    if (error.response) {
+      console.error('Reverse geocoding error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        coordinates: { latitude, longitude }
+      });
+    } else {
+      console.error('Reverse geocoding error:', error.message, { latitude, longitude });
+    }
     return null;
   }
 };

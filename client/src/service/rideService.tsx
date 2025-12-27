@@ -74,3 +74,21 @@ export const updateRideStatus = async (rideId: string, status: string) => {
     return false;
   }
 };
+
+export const submitRating = async (
+  rideId: string,
+  rating: number,
+  feedback: string
+) => {
+  try {
+    const res = await appAxios.post(`/ride/rate/${rideId}`, {
+      rating,
+      feedback,
+    });
+    return { success: true, data: res.data };
+  } catch (error: any) {
+    Alert.alert("Error", "Failed to submit rating");
+    console.log("Error:Submit Rating ", error);
+    return { success: false };
+  }
+};

@@ -53,9 +53,9 @@ export const customMapStyle = [
   }
 ]
 
-export const indiaIntialRegion = {
-  latitude: 28.6139,
-  longitude: 77.2090,
-  latitudeDelta: 0.5,
-  longitudeDelta: 0.5,
-}
+export const defaultInitialRegion = {
+  latitude: 0,
+  longitude: 0,
+  latitudeDelta: 100,
+  longitudeDelta: 100,
+};

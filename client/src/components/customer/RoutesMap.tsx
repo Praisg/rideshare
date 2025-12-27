@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import React, { FC, memo, useEffect, useRef } from "react";
-import { customMapStyle, indiaIntialRegion } from "@/utils/CustomMap";
+import { customMapStyle, defaultInitialRegion } from "@/utils/CustomMap";
 import MapView, { Marker } from "react-native-maps";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { RFValue } from "react-native-responsive-fontsize";
@@ -64,7 +64,7 @@ const RoutesMap: FC<{ drop: any; pickup: any }> = ({ drop, pickup }) => {
       };
     }
 
-    return indiaIntialRegion;
+    return defaultInitialRegion;
   };
 
   return (

@@ -31,21 +31,23 @@ const handleSocketConnection = (io) => {
       socket.on("goOnDuty", (coords) => {
         onDutyRiders.set(user.id, { socketId: socket.id, coords });
         socket.join("onDuty");
-        console.log(`rider ${user.id} is now on duty.`);
+        console.log(`✅ Rider ${user.id} is now ON DUTY at coords:`, coords);
+        console.log(`📊 Total on-duty riders: ${onDutyRiders.size}`);
         updateNearbyriders();
       });
 
       socket.on("goOffDuty", () => {
         onDutyRiders.delete(user.id);
         socket.leave("onDuty");
-        console.log(`rider ${user.id} is now off duty.`);
+        console.log(`❌ Rider ${user.id} is now OFF DUTY`);
+        console.log(`📊 Total on-duty riders: ${onDutyRiders.size}`);
         updateNearbyriders();
       });
 
       socket.on("updateLocation", (coords) => {
         if (onDutyRiders.has(user.id)) {
           onDutyRiders.get(user.id).coords = coords;
-          console.log(`rider ${user.id} updated location.`);
+          console.log(`📍 Rider ${user.id} updated location:`, coords);
           updateNearbyriders();
           socket.to(`rider_${user.id}`).emit("riderLocationUpdate", {
             riderId: user.id,
@@ -64,9 +66,14 @@ const handleSocketConnection = (io) => {
       socket.on("searchrider", async (rideId) => {
         try {
           const ride = await Ride.findById(rideId).populate("customer rider");
-          if (!ride) return socket.emit("error", { message: "Ride not found" });
+          if (!ride) {
+            console.log(`❌ Ride ${rideId} not found`);
+            return socket.emit("error", { message: "Ride not found" });
+          }
 
           const { latitude: pickupLat, longitude: pickupLon } = ride.pickup;
+          console.log(`🔍 Searching for riders near: ${pickupLat}, ${pickupLon}`);
+          console.log(`📊 Currently ${onDutyRiders.size} riders on duty`);
 
           let retries = 0;
           let rideAccepted = false;
@@ -77,11 +84,16 @@ const handleSocketConnection = (io) => {
           const retrySearch = async () => {
             if (canceled) return;
             retries++;
+            
+            console.log(`🔄 Retry ${retries}/${MAX_RETRIES} for ride ${rideId}`);
 
             const riders = sendNearbyRiders(socket, { latitude: pickupLat, longitude: pickupLon }, ride);
+            console.log(`✅ Found ${riders.length} nearby riders within 60km`);
+            
             if (riders.length > 0 || retries >= MAX_RETRIES) {
               if (retryInterval) clearInterval(retryInterval);
               if (!rideAccepted && retries >= MAX_RETRIES) {
+                console.log(`⏰ Max retries reached for ride ${rideId}, deleting...`);
                 await Ride.findByIdAndDelete(rideId);
                 socket.emit("error", { message: "No riders found within 5 minutes." });
               }
@@ -134,6 +146,33 @@ const handleSocketConnection = (io) => {
       }
     });
 
+    socket.on("sendChatMessage", async ({ rideId, message, recipientRole }) => {
+      try {
+        const ride = await Ride.findById(rideId);
+        if (!ride) {
+          console.log("Ride not found for chat:", rideId);
+          return;
+        }
+
+        const chatData = {
+          rideId,
+          message,
+          senderId: user.id,
+          senderRole: user.role,
+          timestamp: new Date(),
+        };
+
+        io.to(`ride_${rideId}`).emit("chatMessage", chatData);
+        console.log(`Chat message sent in ride ${rideId} from ${user.role}`);
+      } catch (error) {
+        console.error("Error sending chat message:", error);
+      }
+    });
+
+    socket.on("getChatHistory", async (rideId) => {
+      socket.emit("chatHistory", { rideId, messages: [] });
+    });
+
     socket.on("disconnect", () => {
       if (user.role === "rider") onDutyRiders.delete(user.id);
       console.log(`${user.role} ${user.id} disconnected.`);
@@ -160,8 +199,23 @@ const handleSocketConnection = (io) => {
       socket.emit("nearbyriders", nearbyriders);
 
       if (ride) {
-        nearbyriders.forEach((rider) => {
-          io.to(rider.socketId).emit("rideOffer", ride);
+        const topRiders = nearbyriders.slice(0, Math.min(10, nearbyriders.length));
+        
+        console.log(`Broadcasting ride ${ride._id} to ${topRiders.length} nearby riders`);
+        
+        const rideData = ride.toObject ? ride.toObject() : ride;
+        
+        topRiders.forEach((rider, index) => {
+          setTimeout(() => {
+            const rideOffer = {
+              ...rideData,
+              pickupDistance: (rider.distance / 1000).toFixed(2),
+              estimatedPickupTime: Math.ceil(rider.distance / 500),
+            };
+            
+            io.to(rider.socketId).emit("rideOffer", rideOffer);
+            console.log(`Sent rideOffer to rider socket ${rider.socketId} for ride ${ride._id}`);
+          }, index * 500);
         });
       }
 

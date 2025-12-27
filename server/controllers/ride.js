@@ -98,12 +98,28 @@ export const acceptRide = async (req, res) => {
 
     ride.rider = riderId;
     ride.status = "START";
+    ride.acceptedAt = new Date();
     await ride.save();
 
-    ride = await ride.populate("rider");
+    ride = await ride.populate({
+      path: "rider",
+      select: "name phone stats.rating stats.totalRatings stats.completedRides vehicle profilePhoto"
+    });
 
     req.socket.to(`ride_${rideId}`).emit("rideUpdate", ride);
-    req.socket.to(`ride_${rideId}`).emit("rideAccepted");
+    req.socket.to(`ride_${rideId}`).emit("rideAccepted", {
+      rider: {
+        id: ride.rider._id,
+        name: ride.rider.name,
+        phone: ride.rider.phone,
+        rating: ride.rider.stats.rating,
+        totalRatings: ride.rider.stats.totalRatings,
+        completedRides: ride.rider.stats.completedRides,
+        vehicle: ride.rider.vehicle,
+        profilePhoto: ride.rider.profilePhoto,
+      },
+      estimatedArrival: calculateETA(ride.pickup.latitude, ride.pickup.longitude)
+    });
 
     res.status(StatusCodes.OK).json({
       message: "Ride accepted successfully",
@@ -113,6 +129,11 @@ export const acceptRide = async (req, res) => {
     console.error("Error accepting ride:", error);
     throw new BadRequestError("Failed to accept ride");
   }
+};
+
+const calculateETA = (pickupLat, pickupLon) => {
+  const avgSpeed = 30;
+  return 5 + Math.floor(Math.random() * 10);
 };
 
 export const updateRideStatus = async (req, res) => {
@@ -135,6 +156,13 @@ export const updateRideStatus = async (req, res) => {
     }
 
     ride.status = status;
+    
+    if (status === "ARRIVED") {
+      ride.arrivedAt = new Date();
+    } else if (status === "COMPLETED") {
+      ride.completedAt = new Date();
+    }
+    
     await ride.save();
 
     req.socket.to(`ride_${rideId}`).emit("rideUpdate", ride);
@@ -317,5 +345,68 @@ export const getRideOffers = async (req, res) => {
   } catch (error) {
     console.error(error);
     throw new BadRequestError("Failed to fetch offers");
+  }
+};
+
+export const rateRide = async (req, res) => {
+  const userId = req.user.id;
+  const { rideId } = req.params;
+  const { rating, feedback } = req.body;
+
+  if (!rideId || !rating) {
+    throw new BadRequestError("Ride ID and rating are required");
+  }
+
+  if (rating < 1 || rating > 5) {
+    throw new BadRequestError("Rating must be between 1 and 5");
+  }
+
+  try {
+    const ride = await Ride.findById(rideId).populate("customer rider");
+
+    if (!ride) {
+      throw new NotFoundError("Ride not found");
+    }
+
+    const user = await User.findById(userId);
+    const isRider = user.role === "rider";
+
+    if (isRider) {
+      if (ride.rider?.toString() !== userId) {
+        throw new BadRequestError("You are not the rider for this ride");
+      }
+      ride.rating.customerRating = rating;
+      ride.rating.riderFeedback = feedback || "";
+
+      const customer = await User.findById(ride.customer);
+      customer.stats.totalRatings += 1;
+      customer.stats.rating = 
+        (customer.stats.rating * (customer.stats.totalRatings - 1) + rating) / 
+        customer.stats.totalRatings;
+      await customer.save();
+    } else {
+      if (ride.customer?.toString() !== userId) {
+        throw new BadRequestError("You are not the customer for this ride");
+      }
+      ride.rating.riderRating = rating;
+      ride.rating.customerFeedback = feedback || "";
+
+      const rider = await User.findById(ride.rider);
+      rider.stats.totalRatings += 1;
+      rider.stats.rating = 
+        (rider.stats.rating * (rider.stats.totalRatings - 1) + rating) / 
+        rider.stats.totalRatings;
+      await rider.save();
+    }
+
+    await ride.save();
+
+    res.status(StatusCodes.OK).json({
+      message: "Rating submitted successfully",
+      ride,
+    });
+  } catch (error) {
+    console.error("Error submitting rating:", error);
+    throw new BadRequestError("Failed to submit rating");
   }
 };

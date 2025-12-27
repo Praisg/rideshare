@@ -6,7 +6,8 @@ import {
   getMyRides,
   submitOffer,
   acceptOffer,
-  getRideOffers
+  getRideOffers,
+  rateRide
 } from '../controllers/ride.js';
 
 const router = express.Router();
@@ -24,5 +25,7 @@ router.get('/rides', getMyRides);
 router.post('/offer/:rideId', submitOffer);
 router.patch('/offer/:rideId/:offerId/accept', acceptOffer);
 router.get('/offers/:rideId', getRideOffers);
+
+router.post('/rate/:rideId', rateRide);
 
 export default router;

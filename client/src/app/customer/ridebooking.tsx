@@ -129,13 +129,16 @@ const RideBooking = () => {
     setLoading(true);
 
     try {
+      const vehicleType = vehicleTypeMapping[selectedOption];
+      
+      if (!vehicleType) {
+        Alert.alert("Error", "Please select a valid vehicle type");
+        setLoading(false);
+        return;
+      }
+
       await createRide({
-        vehicle:
-          selectedOption === "Cab Economy"
-            ? "cabEconomy"
-            : selectedOption === "Cab Premium"
-            ? "cabPremium"
-            : "bike",
+        vehicle: vehicleType,
         drop: {
           latitude: parseFloat(item.drop_latitude),
           longitude: parseFloat(item.drop_longitude),

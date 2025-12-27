@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useWS } from "@/service/WSProvider";
@@ -20,6 +21,7 @@ import CustomText from "../shared/CustomText";
 import { RFValue } from "react-native-responsive-fontsize";
 import { Colors } from "@/utils/Constants";
 import { getRiderEarnings } from "@/service/kycService";
+import EarningsDashboard from "./EarningsDashboard";
 
 const RiderHeader = () => {
   const { disconnect, emit } = useWS();
@@ -27,6 +29,7 @@ const RiderHeader = () => {
   const isFocused = useIsFocused();
   const [earnings, setEarnings] = useState({ total: 0, available: 0 });
   const [loadingEarnings, setLoadingEarnings] = useState(true);
+  const [showEarningsDashboard, setShowEarningsDashboard] = useState(false);
 
   const toggleOnDuty = async () => {
     if (onDuty) {
@@ -112,7 +115,11 @@ const RiderHeader = () => {
         </View>
       </View>
 
-      <View style={riderStyles?.earningContainer}>
+      <TouchableOpacity 
+        style={riderStyles?.earningContainer}
+        onPress={() => setShowEarningsDashboard(true)}
+        activeOpacity={0.8}
+      >
         <CustomText fontSize={13} style={{ color: "#fff" }} fontFamily="Medium">
           Total Earnings
         </CustomText>
@@ -131,7 +138,15 @@ const RiderHeader = () => {
           )}
           <MaterialIcons name="arrow-drop-down" size={24} color="#fff" />
         </View>
-      </View>
+      </TouchableOpacity>
+
+      <Modal
+        visible={showEarningsDashboard}
+        animationType="slide"
+        onRequestClose={() => setShowEarningsDashboard(false)}
+      >
+        <EarningsDashboard onClose={() => setShowEarningsDashboard(false)} />
+      </Modal>
     </>
   );
 };

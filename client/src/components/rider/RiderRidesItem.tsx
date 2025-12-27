@@ -100,7 +100,7 @@ const RiderRidesItem: FC<{ item: RideItem; removeIt: () => void }> = ({
             fontSize={9}
             style={orderStyles.label}
           >
-            Pickup
+            Pickup Distance
           </CustomText>
 
           <CustomText fontSize={11} fontFamily="SemiBold">
@@ -114,6 +114,14 @@ const RiderRidesItem: FC<{ item: RideItem; removeIt: () => void }> = ({
               "--"}{" "}
             Km
           </CustomText>
+          <CustomText fontSize={8} style={{ color: '#666', marginTop: 2 }}>
+            ~{location ? Math.ceil(calculateDistance(
+              item?.pickup?.latitude,
+              item?.pickup?.longitude,
+              location?.latitude,
+              location?.longitude
+            ) * 2) : '--'} min away
+          </CustomText>
         </View>
 
         <View style={orderStyles.borderLine}>
@@ -122,10 +130,26 @@ const RiderRidesItem: FC<{ item: RideItem; removeIt: () => void }> = ({
             fontFamily="Medium"
             style={orderStyles.label}
           >
-            Drop
+            Trip Distance
           </CustomText>
           <CustomText fontSize={11} fontFamily="SemiBold">
             {item?.distance.toFixed(2)} Km
+          </CustomText>
+          <CustomText fontSize={8} style={{ color: '#666', marginTop: 2 }}>
+            ~{Math.ceil(item?.distance * 2)} min trip
+          </CustomText>
+        </View>
+
+        <View style={{ marginLeft: 10 }}>
+          <CustomText
+            fontSize={9}
+            fontFamily="Medium"
+            style={orderStyles.label}
+          >
+            You'll Earn
+          </CustomText>
+          <CustomText fontSize={14} fontFamily="Bold" style={{ color: '#2E7D32' }}>
+            ${item?.fare?.toFixed(2)}
           </CustomText>
         </View>
       </View>

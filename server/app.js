@@ -1,4 +1,7 @@
 import dotenv from 'dotenv';
+
+dotenv.config();
+
 import 'express-async-errors';
 import EventEmitter from 'events';
 import express from 'express';
@@ -16,11 +19,13 @@ import authRouter from './routes/auth.js';
 import rideRouter from './routes/ride.js';
 import mapsRouter from './routes/maps.js';
 import kycRouter from './routes/kyc.js';
+import adminRouter from './routes/admin.js';
+import agentRouter from './routes/agent.js';
+import restaurantRouter from './routes/restaurant.js';
+import foodOrderRouter from './routes/foodOrder.js';
 
 // Import socket handler
 import handleSocketConnection from './controllers/sockets.js';
-
-dotenv.config();
 
 EventEmitter.defaultMaxListeners = 20;
 
@@ -52,6 +57,10 @@ app.use("/auth", authRouter);
 app.use("/maps", mapsRouter);
 app.use("/ride", authMiddleware, rideRouter);
 app.use("/kyc", kycRouter);
+app.use("/admin", adminRouter);
+app.use("/agent", agentRouter);
+app.use("/restaurants", restaurantRouter);
+app.use("/food-orders", authMiddleware, foodOrderRouter);
 
 // Middleware
 app.use(notFoundMiddleware);
