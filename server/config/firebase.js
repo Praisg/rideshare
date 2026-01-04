@@ -5,7 +5,7 @@ const initializeFirebase = () => {
     if (!admin.apps.length && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
       admin.initializeApp({
         credential: admin.credential.cert({
-          projectId: "kwendash-dbf13",
+          projectId: process.env.FIREBASE_PROJECT_ID || "rideshare-bd747",
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
           privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
         }),
